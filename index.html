@@ -1,0 +1,990 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Open Anatomy Atlas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Nunito:wght@400;600;700;800&display=swap">
+<style>
+/* Layout: an atlas plate. Specimen on a soft ivory-to-blush ground, labels in two margin columns with leader lines, a quiet control rail on the left that folds away. */
+:root {
+  --bg: #fbf6ee;          /* ivory */
+  --panel: #fffdf8;
+  --ink: #3b2530;         /* plum ink */
+  --muted: #8b6e79;
+  --line: #efdfd8;
+  --chip: #f8e7e6;        /* blush */
+  --accent: #d2577e;      /* rose */
+  --accent-ink: #ffffff;
+  --accent-soft: #fadbe4;
+  --stage-hi: #fffaf2;
+  --stage-lo: #f2dedd;
+  --good: #3f8f5c;
+  --bad: #c8413b;
+  --shadow: 0 10px 30px rgb(120 60 80 / 0.12), 0 2px 6px rgb(120 60 80 / 0.06);
+  --f-display: 'Young Serif', Georgia, 'Times New Roman', serif;
+  --f-body: 'Nunito', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --ease: cubic-bezier(.2, .8, .2, 1);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #1c1317; --panel: #24191e; --ink: #f7e9ea; --muted: #b99ca6; --line: #3a2a31; --chip: #33232a;
+    --accent: #f08aaa; --accent-ink: #2b0f1a; --accent-soft: #4a2633; --stage-hi: #2d1e25; --stage-lo: #120c0f;
+    --good: #6fcf92; --bad: #f2776f; --shadow: 0 10px 30px rgb(0 0 0 / 0.45); color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #1c1317; --panel: #24191e; --ink: #f7e9ea; --muted: #b99ca6; --line: #3a2a31; --chip: #33232a;
+  --accent: #f08aaa; --accent-ink: #2b0f1a; --accent-soft: #4a2633; --stage-hi: #2d1e25; --stage-lo: #120c0f;
+  --good: #6fcf92; --bad: #f2776f; --shadow: 0 10px 30px rgb(0 0 0 / 0.45); color-scheme: dark;
+}
+html, body { height: 100%; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.45; overflow: hidden; -webkit-font-smoothing: antialiased; }
+* { box-sizing: border-box; }
+button, input { font: inherit; color: inherit; touch-action: manipulation; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.app { display: grid; grid-template-columns: 310px minmax(0, 1fr); height: 100%; transition: grid-template-columns .35s var(--ease); }
+.app.folded { grid-template-columns: 0 minmax(0, 1fr); }
+.app.folded .rail { visibility: hidden; }
+
+/* ---------- rail ---------- */
+.rail { background: var(--panel); border-right: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; min-width: 0; overflow: hidden; }
+.brand { padding: 18px 18px 14px; display: grid; gap: 3px; }
+.brand h1 { font-family: var(--f-display); font-weight: 400; font-size: 1.5rem; margin: 0; line-height: 1.1; color: var(--ink); }
+.brand h1 em { font-style: normal; color: var(--accent); }
+.brand p { margin: 0; color: var(--muted); font-size: 0.82rem; }
+.tabs { display: flex; gap: 4px; margin: 0 14px; padding: 4px; background: var(--chip); border-radius: 999px; }
+.tabs button { flex: 1; background: none; border: 0; padding: 7px 6px; cursor: pointer; font-weight: 700; font-size: 0.85rem; color: var(--muted); border-radius: 999px; transition: background .2s var(--ease), color .2s; }
+.tabs button[aria-selected="true"] { background: var(--panel); color: var(--ink); box-shadow: 0 1px 4px rgb(120 60 80 / 0.12); }
+.pane { overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 16px 18px 28px; display: grid; gap: 20px; align-content: start; min-height: 0; flex: 1; }
+.section { display: grid; gap: 9px; }
+.eyebrow { font-size: 0.72rem; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); font-weight: 800; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.eyebrow span { letter-spacing: 0; text-transform: none; font-weight: 600; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { background: var(--chip); border: 0; border-radius: 999px; padding: 7px 13px; cursor: pointer; font-size: 0.85rem; font-weight: 700; white-space: nowrap; transition: background .2s var(--ease), color .2s, transform .15s; }
+.chip:active { transform: scale(.96); }
+.chip[aria-pressed="true"], .chip.primary { background: var(--accent); color: var(--accent-ink); }
+.chip:disabled { opacity: .45; cursor: default; }
+
+.layers { display: grid; gap: 2px; }
+.layer { display: grid; grid-template-columns: 22px minmax(0, 1fr) 84px; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 10px; }
+.layer:hover { background: var(--chip); }
+.layer .tog { width: 22px; height: 22px; border-radius: 7px; border: 2px solid var(--sw); background: transparent; cursor: pointer; padding: 0; display: grid; place-items: center; transition: background .2s; }
+.layer .tog[aria-pressed="true"] { background: var(--sw); }
+.layer .tog svg { width: 13px; height: 13px; stroke: rgb(43 20 30 / 0.8); stroke-width: 3; fill: none; opacity: 0; }
+.layer .tog[aria-pressed="true"] svg { opacity: 1; }
+.layer .nm { display: flex; justify-content: space-between; gap: 6px; min-width: 0; font-weight: 600; font-size: 0.9rem; }
+.layer .nm span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.layer .n { color: var(--muted); font-size: 0.75rem; font-variant-numeric: tabular-nums; }
+.layer input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
+.layer.off .nm { color: var(--muted); }
+.note { color: var(--muted); font-size: 0.82rem; margin: 0; }
+
+.search { width: 100%; padding: 11px 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg); }
+.plist { display: grid; gap: 1px; }
+.prow { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 8px 8px; border-radius: 10px; cursor: pointer; border: 0; background: none; text-align: left; width: 100%; }
+.prow:hover, .prow.sel { background: var(--chip); }
+.prow .dot { width: 9px; height: 9px; border-radius: 50%; }
+.prow .nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; font-size: 0.9rem; }
+.prow .rg { color: var(--muted); font-size: 0.75rem; white-space: nowrap; }
+
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.stat { background: var(--chip); border-radius: 14px; padding: 9px 11px; display: grid; }
+.stat b { font-size: 1.2rem; font-variant-numeric: tabular-nums; font-weight: 800; }
+.stat small { color: var(--muted); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; }
+.options { display: grid; gap: 7px; }
+.options button { text-align: left; padding: 11px 14px; border-radius: 14px; border: 1.5px solid var(--line); background: var(--bg); cursor: pointer; font-weight: 700; transition: border-color .2s, background .2s; }
+.options button:hover:not(:disabled) { border-color: var(--accent); }
+.options button.right { border-color: var(--good); background: color-mix(in srgb, var(--good) 14%, var(--bg)); }
+.options button.wrong { border-color: var(--bad); background: color-mix(in srgb, var(--bad) 14%, var(--bg)); }
+.check { display: flex; gap: 9px; align-items: center; font-size: 0.88rem; font-weight: 600; }
+.check input { accent-color: var(--accent); width: 18px; height: 18px; }
+.weak { display: grid; gap: 4px; font-size: 0.85rem; }
+.weak div { display: flex; justify-content: space-between; gap: 8px; }
+.weak span:last-child { color: var(--bad); font-size: 0.78rem; white-space: nowrap; }
+
+/* ---------- stage ---------- */
+.stage { position: relative; min-width: 0; min-height: 0; overflow: hidden; background: radial-gradient(120% 90% at 50% 30%, var(--stage-hi), var(--stage-lo)); -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.stage canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.bar { position: absolute; top: 12px; display: flex; flex-wrap: wrap; gap: 8px; z-index: 3; }
+.bar.l { left: 12px; } .bar.r { right: 12px; justify-content: flex-end; }
+.pill { display: flex; background: var(--panel); border-radius: 999px; box-shadow: var(--shadow); padding: 4px; gap: 2px; align-items: center; }
+.pill button { border: 0; background: none; border-radius: 999px; padding: 7px 12px; cursor: pointer; font-size: 0.84rem; font-weight: 700; display: flex; gap: 6px; align-items: center; color: var(--ink); transition: background .2s var(--ease), color .2s; white-space: nowrap; }
+.pill button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.pill .k { font-size: 0.72rem; color: var(--muted); font-weight: 800; padding-left: 8px; text-transform: uppercase; letter-spacing: .06em; }
+.pill svg { width: 17px; height: 17px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* labels */
+.labels { position: absolute; inset: 0; pointer-events: none; transition: opacity .18s var(--ease); z-index: 1; }
+.labels.moving { opacity: 0; transition-duration: .08s; }
+.labels svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.labels .halo { stroke: var(--panel); stroke-width: 3.5; fill: none; opacity: .8; }
+.labels .lead { stroke: var(--ink); stroke-width: 1.1; fill: none; opacity: .6; }
+.labels .lead.sel { stroke: var(--accent); stroke-width: 1.8; opacity: 1; }
+.labels circle { fill: var(--accent); stroke: var(--panel); stroke-width: 1.5; }
+.lab { position: absolute; pointer-events: auto; border: 1px solid var(--line); background: color-mix(in srgb, var(--panel) 90%, transparent); color: var(--ink); border-radius: 9px; padding: 3px 8px; font-size: 12.5px; line-height: 1.15; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 6px; animation: pop .22s var(--ease) both; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.lab.L { flex-direction: row-reverse; text-align: right; }
+.lab span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.lab i { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+.lab.sel { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.lab.q span { color: var(--accent); letter-spacing: .1em; }
+.lab.sel.q span { color: var(--accent-ink); }
+@keyframes pop { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+
+.tip { position: absolute; pointer-events: none; background: var(--panel); color: var(--ink); padding: 5px 10px; border-radius: 9px; font-size: 0.82rem; font-weight: 700; box-shadow: var(--shadow); white-space: nowrap; transform: translate(14px, 12px); z-index: 4; }
+.prompt { position: absolute; top: 66px; left: 50%; transform: translateX(-50%); background: var(--panel); border-radius: 18px; box-shadow: var(--shadow); padding: 10px 20px 12px; text-align: center; max-width: calc(100% - 32px); display: grid; gap: 2px; z-index: 3; }
+.prompt small { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); font-weight: 800; }
+.prompt strong { font-family: var(--f-display); font-size: 1.4rem; font-weight: 400; line-height: 1.2; text-wrap: balance; }
+.prompt .fb { font-size: 0.88rem; font-weight: 700; }
+.prompt .fb.good { color: var(--good); } .prompt .fb.bad { color: var(--bad); }
+
+.card { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); width: min(400px, calc(100% - 24px)); background: var(--panel); border-radius: 20px; box-shadow: var(--shadow); padding: 14px 18px 16px; display: grid; gap: 10px; z-index: 3; animation: rise .28s var(--ease) both; }
+@keyframes rise { from { opacity: 0; transform: translate(-50%, 10px); } to { opacity: 1; transform: translate(-50%, 0); } }
+.card h2 { font-family: var(--f-display); font-size: 1.35rem; font-weight: 400; margin: 0; padding-right: 26px; line-height: 1.2; text-wrap: balance; }
+.meta { display: flex; flex-wrap: wrap; gap: 6px; font-size: 0.78rem; font-weight: 700; }
+.meta span { background: var(--chip); padding: 3px 10px; border-radius: 999px; display: inline-flex; align-items: center; gap: 6px; }
+.meta i { width: 8px; height: 8px; border-radius: 50%; }
+.card .x { position: absolute; top: 8px; right: 10px; border: 0; background: none; cursor: pointer; font-size: 1.3rem; color: var(--muted); padding: 2px 8px; line-height: 1; }
+.card .warn { font-size: 0.82rem; color: var(--muted); margin: 0; }
+.card a { color: var(--accent); font-size: 0.85rem; font-weight: 700; text-decoration: none; align-self: center; }
+
+.hint { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); background: var(--ink); color: var(--bg); border-radius: 999px; padding: 9px 16px; font-size: 0.84rem; font-weight: 700; box-shadow: var(--shadow); white-space: nowrap; transition: opacity .5s var(--ease); z-index: 2; max-width: calc(100% - 24px); overflow: hidden; text-overflow: ellipsis; }
+.hint.gone { opacity: 0; pointer-events: none; }
+.isobar { position: absolute; left: 50%; top: 66px; transform: translateX(-50%); background: var(--ink); color: var(--bg); border-radius: 999px; padding: 6px 6px 6px 16px; display: flex; gap: 10px; align-items: center; font-size: 0.84rem; font-weight: 700; box-shadow: var(--shadow); z-index: 3; }
+.isobar button { background: var(--accent); color: var(--accent-ink); border: 0; border-radius: 999px; padding: 6px 12px; cursor: pointer; font-weight: 800; font-size: 0.8rem; }
+
+.loader { position: absolute; inset: 0; display: grid; place-content: center; gap: 12px; text-align: center; pointer-events: none; z-index: 2; }
+.loader strong { font-family: var(--f-display); font-size: 1.3rem; font-weight: 400; }
+.track { width: 220px; height: 5px; background: var(--line); border-radius: 3px; overflow: hidden; justify-self: center; }
+.track i { display: block; height: 100%; width: 0; background: var(--accent); border-radius: 3px; transition: width .3s var(--ease); }
+.credit { position: absolute; right: 14px; bottom: 10px; font-size: 0.68rem; color: var(--muted); z-index: 2; }
+.credit a { color: inherit; }
+
+@media (max-width: 900px) {
+  body { overflow: auto; }
+  .app, .app.folded { grid-template-columns: minmax(0, 1fr); grid-template-rows: 66svh auto; height: auto; min-height: 100%; }
+  .app.folded .rail { visibility: visible; }
+  .stage { order: -1; }
+  .rail { border-right: 0; border-top: 1px solid var(--line); overflow: visible; }
+  .pane { overflow: visible; }
+  #fold { display: none; }
+  .credit { display: none; }
+}
+@media (max-width: 560px) {
+  .pill .k, .pill .wide { display: none; }
+  .pill button { padding: 7px 9px; }
+  .prompt { top: 104px; }
+  .prompt strong { font-size: 1.1rem; }
+  .isobar { top: 104px; }
+}
+@media (prefers-reduced-motion: reduce) { *, *::before { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+
+<div class="app" id="app">
+  <aside class="rail">
+    <div class="brand">
+      <h1>Open Anatomy <em>Atlas</em></h1>
+      <p>1,650 labelled structures of the adult body</p>
+    </div>
+    <div class="tabs" role="tablist">
+      <button role="tab" id="tab-layers" aria-selected="true" data-tab="layers">Layers</button>
+      <button role="tab" id="tab-parts" aria-selected="false" data-tab="parts">Find a part</button>
+      <button role="tab" id="tab-quiz" aria-selected="false" data-tab="quiz">Quiz</button>
+    </div>
+
+    <div class="pane" id="pane-layers">
+      <div class="section">
+        <div class="eyebrow">Show me</div>
+        <div class="chips" id="presets"></div>
+      </div>
+      <div class="section">
+        <div class="eyebrow">Body systems <span>on · solid ↔ clear</span></div>
+        <div class="layers" id="layers"></div>
+        <p class="note">Slide a system toward clear to look through it at what's inside. Clear layers lose their labels so the deeper parts get them.</p>
+      </div>
+      <div class="section">
+        <div class="eyebrow">Body region</div>
+        <div class="chips" id="regions"></div>
+      </div>
+      <div class="section">
+        <div class="eyebrow">Side of the body</div>
+        <div class="chips" id="sides"></div>
+      </div>
+      <div class="section">
+        <div class="eyebrow">Moving around</div>
+        <p class="note">One finger turns the body. Pinch to zoom toward your fingers. Two fingers drag to move. Double-tap any spot to zoom straight into it. Tap a part or its label to learn about it.</p>
+      </div>
+    </div>
+
+    <div class="pane" id="pane-parts" hidden>
+      <input class="search" id="q" type="search" placeholder="Search, e.g. femur, aorta, gyrus" autocomplete="off">
+      <p class="note" id="plist-note"></p>
+      <div class="plist" id="plist"></div>
+    </div>
+
+    <div class="pane" id="pane-quiz" hidden>
+      <div class="section" id="quiz-setup">
+        <div class="eyebrow">How to quiz</div>
+        <div class="chips" id="qmodes">
+          <button class="chip" aria-pressed="true" data-mode="find">Find it on the body</button>
+          <button class="chip" aria-pressed="false" data-mode="name">Name the glowing part</button>
+        </div>
+        <label class="check"><input type="checkbox" id="ignore-side" checked> Left and right count as the same</label>
+        <p class="note" id="pool-note">The quiz asks about what you can see right now, so set up the layers and region first.</p>
+        <div class="chips"><button class="chip primary" id="qstart">Start quiz</button></div>
+      </div>
+      <div class="section" id="quiz-run" hidden>
+        <div class="stats">
+          <div class="stat"><b id="s-score">0/0</b><small>Correct</small></div>
+          <div class="stat"><b id="s-streak">0</b><small>Streak</small></div>
+          <div class="stat"><b id="s-master">0</b><small>Learned</small></div>
+        </div>
+        <div class="options" id="options"></div>
+        <div class="chips">
+          <button class="chip" id="qreveal">Show me</button>
+          <button class="chip primary" id="qnext">Next</button>
+          <button class="chip" id="qstop">End quiz</button>
+        </div>
+      </div>
+      <div class="section">
+        <div class="eyebrow">Parts you miss most <span><button class="chip" id="qclear" style="padding:3px 10px;font-size:0.72rem">Clear</button></span></div>
+        <div class="weak" id="weak"></div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="stage" id="stage">
+    <canvas id="c"></canvas>
+    <div class="labels" id="labels"><svg id="leaders" aria-hidden="true"></svg></div>
+    <div class="bar l">
+      <div class="pill"><button id="fold" title="Hide or show the side panel"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16"/></svg></button></div>
+      <div class="pill" role="group" aria-label="Labels">
+        <span class="k">Labels</span>
+        <button id="lb-off" aria-pressed="false">Off</button>
+        <button id="lb-main" aria-pressed="true">Main</button>
+        <button id="lb-all" aria-pressed="false">All</button>
+      </div>
+      <div class="pill"><button id="selftest" aria-pressed="false" title="Hide label names until you tap them"><svg viewBox="0 0 24 24"><path d="M9 9a3 3 0 115 2.2c-1 .7-2 1.3-2 2.8"/><circle cx="12" cy="18" r=".6"/></svg><span class="wide">Test myself</span></button></div>
+    </div>
+    <div class="bar r">
+      <div class="pill" role="group" aria-label="View">
+        <button id="v-front">Front</button>
+        <button id="v-back">Back</button>
+        <button id="v-left" class="wide">Left</button>
+        <button id="v-right" class="wide">Right</button>
+        <button id="v-reset" title="Reset view"><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 108-8H8"/><path d="M10 1L7 4l3 3"/></svg></button>
+      </div>
+    </div>
+    <div class="prompt" id="prompt" hidden><small id="prompt-k">Find</small><strong id="prompt-t"></strong><span class="fb" id="prompt-fb"></span></div>
+    <div class="isobar" id="isobar" hidden><span id="iso-text">Showing one part</span><button id="iso-exit">Show everything</button></div>
+    <div class="tip" id="tip" hidden></div>
+    <div class="hint" id="hint">Drag to turn · Pinch to zoom · Double-tap to zoom in</div>
+    <div class="card" id="card" hidden>
+      <button class="x" id="card-x" aria-label="Close">×</button>
+      <h2 id="card-name"></h2>
+      <div class="meta" id="card-meta"></div>
+      <p class="warn" id="card-warn" hidden>It's tucked behind other layers. Slide those systems toward clear to see it.</p>
+      <div class="chips">
+        <button class="chip" id="a-focus">Zoom in</button>
+        <button class="chip" id="a-iso">Show only this</button>
+        <a id="card-link" href="#" target="_blank" rel="noopener">Read more ↗</a>
+      </div>
+    </div>
+    <div class="loader" id="loader"><strong id="loader-t">Preparing the atlas…</strong><div class="track"><i id="loader-bar"></i></div></div>
+    <div class="credit">Model: <a href="https://dbarchive.biosciencedbc.jp/en/bodyparts3d/download.html" target="_blank" rel="noopener">BodyParts3D</a>, © The Database Center for Life Science, CC BY 4.0</div>
+  </main>
+</div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/",
+  "three-mesh-bvh": "https://cdn.jsdelivr.net/npm/three-mesh-bvh@0.8.3/build/index.module.js"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { computeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
+THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
+THREE.Mesh.prototype.raycast = acceleratedRaycast;
+
+const $ = (id) => document.getElementById(id);
+const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const SYSTEMS = [
+  { key: 'skin', label: 'Skin & hair', color: '#d9a68b' },
+  { key: 'muscles', label: 'Muscles & tendons', color: '#b8494a' },
+  { key: 'skeleton', label: 'Bones & joints', color: '#e8dcc3' },
+  { key: 'arteries', label: 'Arteries', color: '#d43a3f' },
+  { key: 'veins', label: 'Veins', color: '#4062c9' },
+  { key: 'heart', label: 'Heart', color: '#a8344a' },
+  { key: 'nervous', label: 'Brain, nerves & eyes', color: '#e4bf4f' },
+  { key: 'respiratory', label: 'Airways & larynx', color: '#82b7cf' },
+  { key: 'digestive', label: 'Digestive & liver', color: '#d68d62' },
+  { key: 'urinary', label: 'Urinary', color: '#c6a547' },
+  { key: 'reproductive', label: 'Reproductive', color: '#c47c9d' },
+  { key: 'endocrine', label: 'Endocrine', color: '#9c70c4' },
+  { key: 'lymphatic', label: 'Lymphoid organs', color: '#68a65c' },
+];
+const SYS = Object.fromEntries(SYSTEMS.map((s) => [s.key, { ...s, on: true, opacity: 1, count: 0 }]));
+const REGIONS = ['All', 'Head', 'Neck', 'Thorax', 'Abdomen', 'Pelvis', 'Back', 'Upper limb', 'Lower limb'];
+const PRESETS = [
+  { label: 'Whole body', set: { all: 1 } },
+  { label: 'Muscles', set: { muscles: 1, skeleton: 1 } },
+  { label: 'Skeleton', set: { skeleton: 1 } },
+  { label: 'Organs', set: { skeleton: 0.15, heart: 1, respiratory: 1, digestive: 1, urinary: 1, reproductive: 1, endocrine: 1, lymphatic: 1 } },
+  { label: 'Heart & vessels', set: { skeleton: 0.15, arteries: 1, veins: 1, heart: 1 } },
+  { label: 'Brain & nerves', set: { skeleton: 0.15, nervous: 1 } },
+];
+
+function partColor(p) {
+  const n = p.name.toLowerCase();
+  let c = SYS[p.sys].color;
+  if (p.sys === 'skin') { if (/hair|eyebrow/.test(n)) c = '#4a3226'; else if (/lip/.test(n)) c = '#c07a72'; }
+  if (p.sys === 'nervous') {
+    if (/eyeball|cornea|lens|sclera|iris|ciliary|chamber|retina|vitreous|corona/.test(n)) c = '#eef0f0';
+    else if (/ventricle|aqueduct|foramen|canal|choroid/.test(n)) c = '#79b8d6';
+    else if (!/nerve|ganglion|optic|chiasm|tract|root|plexus/.test(n)) c = '#ddb0a6';
+  }
+  if (p.sys === 'heart') { if (/cavity/.test(n)) c = '#86202e'; else if (/cusp|leaflet|valve/.test(n)) c = '#e9c9b9'; }
+  if (p.sys === 'digestive') {
+    if (/liver|hepatovenous/.test(n)) c = '#81372a';
+    else if (/gallbladder|bile|biliary|cystic|hepatic duct|duct of caudate/.test(n)) c = '#64903f';
+    else if (/tongue|gingiva/.test(n)) c = '#c97070';
+    else if (/pancrea/.test(n)) c = '#dbb57b';
+  }
+  if (p.sys === 'skeleton' && /cartilage|disk|disc|ligament|membrane|menisc|symphysis/.test(n)) c = '#aecbd2';
+  if (p.sys === 'skeleton' && /tooth|incisor|canine|molar/.test(n)) c = '#f6f1e6';
+  if (p.sys === 'muscles' && /tendon|aponeuro|tract|linea|raphe|fascia|ring/.test(n)) c = '#ddd4c2';
+  const col = new THREE.Color(c);
+  let h = 0; for (const ch of p.id) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  const hsl = {}; col.getHSL(hsl);
+  const spread = p.sys === 'muscles' || p.sys === 'skeleton' ? 0.16 : 0.1;   // neighbours read as separate pieces
+  col.setHSL(hsl.h + ((h >> 8) % 100 - 50) / 5000, hsl.s, Math.min(0.92, Math.max(0.1, hsl.l + ((h % 100) / 100 - 0.5) * spread)));
+  return col;
+}
+const canonical = (name) => name.replace(/\b(left|right)\s+/gi, '').replace(/\s+/g, ' ').trim().replace(/^./, (m) => m.toUpperCase());
+
+// ---------- renderer ----------
+const canvas = $('c'), stage = $('stage');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setClearColor(0x000000, 0);
+renderer.toneMapping = THREE.NeutralToneMapping;
+const scene = new THREE.Scene();
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+scene.environmentIntensity = 0.55;
+const camera = new THREE.PerspectiveCamera(35, 1, 2, 20000);
+const HOME = { target: new THREE.Vector3(0, 880, 90), dist: 3400 };
+camera.position.set(0, 940, 3490);
+scene.add(camera);
+const key = new THREE.DirectionalLight(0xfff4ee, 1.5); key.position.set(300, 500, 400); camera.add(key);
+scene.add(new THREE.HemisphereLight(0xfff8f2, 0x6b4a52, 0.6));
+const controls = new OrbitControls(camera, canvas);
+controls.target.copy(HOME.target);
+Object.assign(controls, { enableDamping: true, dampingFactor: 0.08, rotateSpeed: 0.85, zoomSpeed: 1.1, panSpeed: 0.9, zoomToCursor: true, screenSpacePanning: true, minDistance: 12, maxDistance: 7000 });
+
+let dirty = true, lastMove = 0;
+function resize() {
+  const r = stage.getBoundingClientRect();
+  renderer.setSize(r.width, r.height, false);
+  camera.aspect = r.width / Math.max(1, r.height); camera.updateProjectionMatrix();
+  dirty = true; labelsStale();
+}
+new ResizeObserver(resize).observe(stage);
+controls.addEventListener('change', () => { dirty = true; lastMove = performance.now(); labelsStale(); });
+controls.addEventListener('start', hideHint);
+
+let anim = null;
+function loop(t) {
+  requestAnimationFrame(loop);
+  if (anim) {
+    const k = Math.min(1, (t - anim.t0) / anim.dur), e = k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
+    controls.target.lerpVectors(anim.ft, anim.tt, e);
+    camera.position.lerpVectors(anim.fp, anim.tp, e);
+    if (k >= 1) anim = null;
+    dirty = true; lastMove = t; labelsStale();
+  }
+  controls.update();
+  if (dirty) {
+    const d = camera.position.distanceTo(controls.target);
+    const near = THREE.MathUtils.clamp(d * 0.02, 0.5, 40);   // close-ups stay crisp when you zoom inside the body
+    if (Math.abs(near - camera.near) > near * 0.05) { camera.near = near; camera.updateProjectionMatrix(); }
+    renderer.render(scene, camera); dirty = false;
+  }
+}
+requestAnimationFrame(loop);
+
+// ---------- state ----------
+let manifest = null;
+const parts = [];
+let isolated = null, region = 'All', side = 'Both', selected = null, quiz = null;
+let labelMode = 'main', selfTest = false;
+const revealed = new Set();
+let bodyCenter = HOME.target.clone();
+const accent = () => new THREE.Color(css('--accent') || '#d2577e');
+
+function isShown(p) {
+  if (isolated) return isolated.has(p.id);
+  if (!SYS[p.sys].on) return false;
+  if (region !== 'All' && p.region !== region) return false;
+  if (side === 'Left' && p.side === 'R') return false;
+  if (side === 'Right' && p.side === 'L') return false;
+  return true;
+}
+function effOpacity(p) {
+  const base = isolated ? 1 : SYS[p.sys].opacity;
+  if (quiz && quiz.highlight && (quiz.mode === 'name' || quiz.answered) && p !== quiz.highlight && p !== quiz.badFlash) return Math.min(base, 0.18);
+  return base;
+}
+function applyMaterial(p) {
+  const o = effOpacity(p), m = p.mat;
+  const tr = o < 0.999;
+  if (m.transparent !== tr) m.needsUpdate = true;
+  m.opacity = o; m.transparent = tr; m.depthWrite = !tr;
+  const glow = selected === p || (quiz && quiz.highlight === p), bad = quiz && quiz.badFlash === p;
+  m.emissive.copy(bad ? new THREE.Color('#ff4a3a') : accent());
+  m.emissiveIntensity = glow || bad ? 0.75 : 0;
+}
+function refresh() {
+  const order = SYSTEMS.map((s) => s.key);
+  for (const p of parts) { p.mesh.visible = isShown(p); applyMaterial(p); p.mesh.renderOrder = p.mat.transparent ? 10 + order.indexOf(p.sys) : 0; }
+  $('isobar').hidden = !isolated || !!quiz;
+  renderLayers(); renderList(); dirty = true; labelsStale();
+}
+
+// ---------- loading ----------
+async function load() {
+  manifest = await (await fetch('data/manifest.json')).json();
+  for (const p of manifest.parts) if (SYS[p.sys]) SYS[p.sys].count++;
+  buildControls();
+  const order = SYSTEMS.map((s) => s.key).filter((k) => manifest.systems[k]);
+  const total = order.reduce((a, k) => a + manifest.systems[k].bytes, 0);
+  let done = 0;
+  for (const k of order) {
+    $('loader-t').textContent = `Bringing in ${SYS[k].label.toLowerCase()}…`;
+    const txt = await (await fetch('data/' + manifest.systems[k].file)).text();   // mesh bytes, base64-encoded
+    const bin = atob(txt), bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    buildSystem(k, bytes.buffer);
+    done += manifest.systems[k].bytes;
+    $('loader-bar').style.width = (100 * done / total).toFixed(1) + '%';
+    refresh();
+    await new Promise((r) => setTimeout(r, 0));
+  }
+  $('loader').hidden = true;
+  buildBVHs();
+  setTimeout(hideHint, 9000);
+}
+function buildSystem(k, buf) {
+  for (const meta of manifest.parts) {
+    if (meta.sys !== k || !meta.iCount) continue;
+    const q = new Int16Array(buf, meta.vOff, meta.vCount * 3);
+    const pos = new Float32Array(meta.vCount * 3);
+    const [mx, my, mz] = meta.min, [sx, sy, sz] = meta.scale;
+    for (let i = 0; i < pos.length; i += 3) { pos[i] = q[i] * sx + mx; pos[i + 1] = q[i + 1] * sy + my; pos[i + 2] = q[i + 2] * sz + mz; }
+    const idx = meta.i32 ? new Uint32Array(buf, meta.iOff, meta.iCount) : new Uint16Array(buf, meta.iOff, meta.iCount);
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    g.setIndex(new THREE.BufferAttribute(idx, 1));
+    g.computeVertexNormals();
+    if (meta.name === 'Skin') {   // a few superficial muscles graze the skin surface; lift the skin 5 mm so they stay underneath
+      const n = g.attributes.normal.array;
+      for (let i = 0; i < pos.length; i++) pos[i] += n[i] * 5;
+    }
+    g.computeBoundingSphere(); g.computeBoundingBox();
+    const p = { ...meta, canon: canonical(meta.name), index: parts.length };
+    p.color = partColor(p);
+    p.mat = new THREE.MeshStandardMaterial({ color: p.color, roughness: p.sys === 'skeleton' ? 0.7 : 0.48, metalness: 0, side: THREE.DoubleSide, emissive: accent(), emissiveIntensity: 0 });
+    const id = parts.length + 1;   // colour-coded id used to find which parts are visible on screen
+    p.idMat = new THREE.MeshBasicMaterial({ color: new THREE.Color().setRGB((id & 255) / 255, ((id >> 8) & 255) / 255, ((id >> 16) & 255) / 255), side: THREE.DoubleSide, toneMapped: false });
+    p.mesh = new THREE.Mesh(g, p.mat);
+    p.mesh.userData.part = p;
+    p.center = g.boundingSphere.center.clone();
+    scene.add(p.mesh); parts.push(p);
+    if (meta.name === 'Skin') g.boundingBox.getCenter(bodyCenter);
+  }
+}
+function buildBVHs() {
+  let i = 0;
+  const step = () => {
+    const t = performance.now();
+    while (i < parts.length && performance.now() - t < 10) parts[i++].mesh.geometry.computeBoundsTree();
+    if (i < parts.length) setTimeout(step, 0);
+  };
+  step();
+}
+
+// ---------- labels ----------
+const labelsEl = $('labels'), svg = $('leaders');
+const idRT = new THREE.WebGLRenderTarget(1, 1);
+const ID_DIV = 3;
+let idBuf = new Uint8Array(4), idW = 1, idH = 1, labelTimer = 0, lastVisible = new Uint32Array(1);
+function labelsStale() {
+  labelsEl.classList.add('moving');
+  clearTimeout(labelTimer); labelTimer = setTimeout(tryLabels, 140);
+}
+function tryLabels() {
+  if (anim || performance.now() - lastMove < 110) { labelTimer = setTimeout(tryLabels, 90); return; }
+  computeLabels(); labelsEl.classList.remove('moving');
+}
+function idPass(W, H) {
+  idW = Math.max(1, Math.round(W / ID_DIV)); idH = Math.max(1, Math.round(H / ID_DIV));
+  if (idRT.width !== idW || idRT.height !== idH) { idRT.setSize(idW, idH); idBuf = new Uint8Array(idW * idH * 4); }
+  const vis = parts.map((p) => p.mesh.visible);
+  for (const p of parts) { if (p.mesh.visible && effOpacity(p) < 0.5) p.mesh.visible = false; p.mesh.material = p.idMat; }
+  const env = scene.environment; scene.environment = null;
+  renderer.setRenderTarget(idRT); renderer.setClearColor(0x000000, 1); renderer.clear(); renderer.render(scene, camera);
+  renderer.setRenderTarget(null); renderer.setClearColor(0x000000, 0);
+  scene.environment = env;
+  parts.forEach((p, i) => { p.mesh.visible = vis[i]; p.mesh.material = p.mat; });
+  renderer.readRenderTargetPixels(idRT, 0, 0, idW, idH, idBuf);
+}
+function computeLabels() {
+  const W = stage.clientWidth, H = stage.clientHeight;
+  const pinned = [];
+  if (selected && (!quiz)) pinned.push(selected);
+  if (quiz && quiz.answered && quiz.highlight) pinned.push(quiz.highlight);
+  const showAuto = labelMode !== 'off' && !quiz;
+  if (!parts.length || (!showAuto && !pinned.length)) { drawLabels([], W, H); return; }
+  idPass(W, H);
+  const n = parts.length + 1;
+  const cnt = new Uint32Array(n), sx = new Float64Array(n), sy = new Float64Array(n);
+  for (let y = 0, o = 0; y < idH; y++) for (let x = 0; x < idW; x++, o += 4) {
+    const id = idBuf[o] | (idBuf[o + 1] << 8) | (idBuf[o + 2] << 16);
+    if (id && id < n) { cnt[id]++; sx[id] += x; sy[id] += y; }
+  }
+  lastVisible = cnt;
+  const minPx = labelMode === 'all' ? 3 : 30;
+  const want = new Uint8Array(n);
+  if (showAuto) for (let id = 1; id < n; id++) if (cnt[id] >= minPx) want[id] = 1;
+  for (const p of pinned) if (cnt[p.index + 1]) want[p.index + 1] = 1;
+  // anchor = the visible pixel of each part closest to its visible centroid, so the leader always lands on the part
+  const best = new Float64Array(n).fill(Infinity), bx = new Int32Array(n), by = new Int32Array(n);
+  for (let y = 0, o = 0; y < idH; y++) for (let x = 0; x < idW; x++, o += 4) {
+    const id = idBuf[o] | (idBuf[o + 1] << 8) | (idBuf[o + 2] << 16);
+    if (!id || id >= n || !want[id]) continue;
+    const dx = x - sx[id] / cnt[id], dy = y - sy[id] / cnt[id], d = dx * dx + dy * dy;
+    if (d < best[id]) { best[id] = d; bx[id] = x; by[id] = y; }
+  }
+  const cands = [];
+  for (let id = 1; id < n; id++) if (want[id]) cands.push({ p: parts[id - 1], area: cnt[id], x: (bx[id] + 0.5) * W / idW, y: (idH - 1 - by[id] + 0.5) * H / idH });
+  for (const p of pinned) {
+    const c = cands.find((c) => c.p === p);
+    if (c) c.pin = true;
+    else {   // hidden behind something: point at where it is
+      const v = new THREE.Vector3(); new THREE.Box3().setFromObject(p.mesh).getCenter(v); v.project(camera);
+      if (v.z < 1 && Math.abs(v.x) < 1 && Math.abs(v.y) < 1) cands.push({ p, pin: true, area: 0, x: (v.x + 1) / 2 * W, y: (1 - v.y) / 2 * H, hiddenBehind: true });
+    }
+  }
+  $('card-warn').hidden = !(selected && !cnt[selected.index + 1]);
+  drawLabels(layout(cands, W, H), W, H);
+}
+function topReserve() {
+  let b = 0;
+  for (const el of stage.querySelectorAll('.bar, .prompt:not([hidden]), .isobar:not([hidden])')) b = Math.max(b, el.offsetTop + el.offsetHeight);
+  return b + 10;
+}
+function layout(cands, W, H) {
+  const narrow = W < 620;
+  const colW = narrow ? 112 : 176, rowH = narrow ? 30 : 32, pad = 10;
+  const top = topReserve();
+  let bottom = H - 26;
+  const card = $('card');
+  if (!card.hidden && W - 2 * (colW + pad) < card.offsetWidth + 16) bottom -= card.offsetHeight + 16;
+  const rows = Math.max(0, Math.floor((bottom - top) / rowH));
+  if (!rows) return [];
+  const perSide = labelMode === 'main' ? Math.min(rows, Math.max(4, Math.floor(rows * 0.55))) : rows;
+  const slots = { L: new Array(rows).fill(null), R: new Array(rows).fill(null) }, used = { L: 0, R: 0 };
+  cands.sort((a, b) => (b.pin ? 1 : 0) - (a.pin ? 1 : 0) || b.area - a.area);
+  const mid = W / 2;
+  for (const c of cands) {
+    const pref = c.x < mid ? 'L' : 'R', other = pref === 'L' ? 'R' : 'L';
+    const sidesToTry = Math.abs(c.x - mid) < W * 0.2 || c.pin ? [pref, other] : [pref];
+    const desired = Math.max(0, Math.min(rows - 1, Math.round((c.y - top) / rowH - 0.5)));
+    const reach = c.pin ? rows : Math.ceil(rows * 0.3);
+    let placed = false;
+    for (const s of sidesToTry) {
+      if (!c.pin && used[s] >= perSide) continue;
+      for (let k = 0; k <= reach && !placed; k++) for (const r of k ? [desired - k, desired + k] : [desired]) {
+        if (r < 0 || r >= rows || slots[s][r]) continue;
+        slots[s][r] = c; used[s]++; c.side = s; placed = true; break;
+      }
+      if (placed) break;
+    }
+  }
+  const out = [];
+  for (const s of ['L', 'R']) {   // reorder within each column by height so leader lines never cross
+    const idx = [], items = [];
+    slots[s].forEach((c, r) => { if (c) { idx.push(r); items.push(c); } });
+    items.sort((a, b) => a.y - b.y);
+    items.forEach((c, i) => {
+      const ly = top + idx[i] * rowH + rowH / 2;
+      const lx = s === 'L' ? pad : W - pad - colW;
+      out.push({ ...c, ly, lx, colW, rowH });
+    });
+  }
+  return out;
+}
+function drawLabels(items, W, H) {
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  let paths = '';
+  for (const it of labelsEl.querySelectorAll('.lab')) it.remove();
+  for (const it of items) {
+    const sel = it.p === selected || (quiz && quiz.highlight === it.p);
+    const ex = it.side === 'L' ? it.lx + it.colW + 2 : it.lx - 2;
+    const kx = ex + (it.side === 'L' ? 10 : -10);
+    const d = `M${ex.toFixed(1)} ${it.ly.toFixed(1)}L${kx.toFixed(1)} ${it.ly.toFixed(1)}L${it.x.toFixed(1)} ${it.y.toFixed(1)}`;
+    paths += `<path class="halo" d="${d}"/><path class="lead${sel ? ' sel' : ''}" d="${d}"${it.hiddenBehind ? ' stroke-dasharray="4 3"' : ''}/><circle cx="${it.x.toFixed(1)}" cy="${it.y.toFixed(1)}" r="${sel ? 4.5 : 3}"/>`;
+    const b = document.createElement('button');
+    const hideName = selfTest && !revealed.has(it.p.id) && !(quiz && quiz.answered);
+    b.className = `lab ${it.side}${sel ? ' sel' : ''}${hideName ? ' q' : ''}`;
+    b.style.cssText = `top:${it.ly - (it.rowH - 4) / 2}px;${it.side === 'L' ? 'left' : 'left'}:${it.lx}px;width:${it.colW}px;height:${it.rowH - 4}px;${it.side === 'L' ? 'justify-content:flex-start' : ''}`;
+    b.innerHTML = `<i style="background:${SYS[it.p.sys].color}"></i><span></span>`;
+    b.querySelector('span').textContent = hideName ? '? ? ?' : it.p.name;
+    b.title = hideName ? 'Tap to reveal' : it.p.name;
+    b.onclick = () => {
+      if (selfTest && !revealed.has(it.p.id)) revealed.add(it.p.id);
+      select(it.p);
+    };
+    labelsEl.append(b);
+  }
+  svg.innerHTML = paths;
+}
+
+// ---------- touch & mouse ----------
+const ray = new THREE.Raycaster(); ray.firstHitOnly = true;
+const ndc = new THREE.Vector2();
+function pickHit(ev) {
+  const r = canvas.getBoundingClientRect();
+  ndc.set(((ev.clientX - r.left) / r.width) * 2 - 1, -((ev.clientY - r.top) / r.height) * 2 + 1);
+  ray.setFromCamera(ndc, camera);
+  const objs = parts.filter((p) => p.mesh.visible && effOpacity(p) >= 0.5).map((p) => p.mesh);
+  const h = ray.intersectObjects(objs, false).sort((a, b) => a.distance - b.distance)[0];
+  return h ? { part: h.object.userData.part, point: h.point } : null;
+}
+const pointers = new Map();
+let gesture = null, lastTap = null;
+canvas.addEventListener('pointerdown', (e) => {
+  pointers.set(e.pointerId, true);
+  if (pointers.size === 1) gesture = { x: e.clientX, y: e.clientY, t: performance.now(), multi: false };
+  else if (gesture) gesture.multi = true;
+  hideHint();
+});
+const endPointer = (e) => {
+  pointers.delete(e.pointerId);
+  const g = gesture;
+  if (!pointers.size) gesture = null;
+  if (e.type !== 'pointerup' || !g || g.multi) return;
+  if (Math.hypot(e.clientX - g.x, e.clientY - g.y) > 9 || performance.now() - g.t > 450) return;
+  onTap(e);
+};
+canvas.addEventListener('pointerup', endPointer);
+canvas.addEventListener('pointercancel', endPointer);
+function onTap(e) {
+  const hit = pickHit(e), now = performance.now();
+  if (lastTap && now - lastTap.t < 340 && Math.hypot(e.clientX - lastTap.x, e.clientY - lastTap.y) < 40) {
+    lastTap = null;
+    if (hit) flyTo(hit.point);
+    return;
+  }
+  lastTap = { t: now, x: e.clientX, y: e.clientY };
+  if (quiz && quiz.mode === 'find' && !quiz.answered) { if (hit) quizAnswer(hit.part); return; }
+  if (quiz) return;
+  select(hit ? hit.part : null);
+}
+const tip = $('tip');
+let hoverRaf = 0;
+canvas.addEventListener('pointermove', (ev) => {
+  if (ev.pointerType !== 'mouse' || ev.buttons) { tip.hidden = true; return; }
+  if (hoverRaf) return;
+  hoverRaf = requestAnimationFrame(() => {
+    hoverRaf = 0;
+    if (quiz && !quiz.answered) { tip.hidden = true; return; }
+    const h = pickHit(ev);
+    if (!h || (selfTest && !revealed.has(h.part.id))) { tip.hidden = true; return; }
+    const r = stage.getBoundingClientRect();
+    tip.textContent = h.part.name; tip.hidden = false;
+    tip.style.left = (ev.clientX - r.left) + 'px'; tip.style.top = (ev.clientY - r.top) + 'px';
+  });
+});
+canvas.addEventListener('pointerleave', () => { tip.hidden = true; });
+
+function animateTo(target, pos, dur = 750) {
+  anim = { t0: performance.now(), dur, ft: controls.target.clone(), fp: camera.position.clone(), tt: target.clone(), tp: pos.clone() };
+}
+function flyTo(point) {
+  const d = camera.position.distanceTo(controls.target);
+  const dir = camera.position.clone().sub(controls.target).normalize();
+  const nd = Math.max(30, d * 0.4);
+  animateTo(point, point.clone().add(dir.multiplyScalar(nd)));
+}
+function focusOn(list) {
+  const box = new THREE.Box3();
+  for (const p of list) box.expandByObject(p.mesh);
+  if (box.isEmpty()) return;
+  const sph = box.getBoundingSphere(new THREE.Sphere());
+  const dist = Math.max(220, sph.radius / Math.sin(THREE.MathUtils.degToRad(camera.fov / 2)) * 1.7);
+  const dir = camera.position.clone().sub(controls.target).normalize();
+  animateTo(sph.center, sph.center.clone().add(dir.multiplyScalar(dist)));
+}
+function viewFrom(dx, dz) {
+  const t = bodyCenter.clone();
+  animateTo(t, t.clone().add(new THREE.Vector3(dx * HOME.dist, 60, dz * HOME.dist)));
+}
+$('v-front').onclick = () => viewFrom(0, 1);
+$('v-back').onclick = () => viewFrom(0, -1);
+$('v-left').onclick = () => viewFrom(1, 0);     // the body's own left side
+$('v-right').onclick = () => viewFrom(-1, 0);
+$('v-reset').onclick = () => viewFrom(0, 1);
+function hideHint() { $('hint').classList.add('gone'); }
+
+// ---------- part card ----------
+function select(p) {
+  const prev = selected; selected = p;
+  if (prev) applyMaterial(prev);
+  if (p) applyMaterial(p);
+  $('card').hidden = !p || !!quiz;
+  if (p) {
+    hideHint();
+    const hideName = selfTest && !revealed.has(p.id);
+    $('card-name').textContent = hideName ? 'Tap the label to reveal' : p.name;
+    const s = SYS[p.sys], meta = $('card-meta');
+    meta.innerHTML = '';
+    const add = (html) => { const e = document.createElement('span'); e.innerHTML = html; meta.append(e); };
+    add(`<i style="background:${s.color}"></i>${s.label}`);
+    add(p.region);
+    if (p.side) add(p.side === 'L' ? 'Left side' : 'Right side');
+    $('card-link').href = 'https://en.wikipedia.org/wiki/Special:Search?search=' + encodeURIComponent(p.canon);
+    $('card-link').hidden = hideName;
+    $('a-iso').textContent = isolated && isolated.size === 1 && isolated.has(p.id) ? 'Show everything' : 'Show only this';
+  }
+  renderList(); dirty = true; labelsStale();
+}
+$('card-x').onclick = () => select(null);
+$('a-focus').onclick = () => selected && focusOn([selected]);
+$('a-iso').onclick = () => {
+  if (!selected) return;
+  if (isolated && isolated.size === 1 && isolated.has(selected.id)) { isolated = null; refresh(); viewFrom(0, 1); }
+  else { isolated = new Set([selected.id]); refresh(); focusOn([selected]); }
+  select(selected);
+};
+$('iso-exit').onclick = () => { isolated = null; refresh(); if (selected) select(selected); };
+addEventListener('keydown', (e) => { if (e.key === 'Escape') select(null); });
+
+// ---------- top bar ----------
+function setLabelMode(m) {
+  labelMode = m;
+  for (const k of ['off', 'main', 'all']) $('lb-' + k).setAttribute('aria-pressed', String(k === m));
+  labelsStale();
+}
+$('lb-off').onclick = () => setLabelMode('off');
+$('lb-main').onclick = () => setLabelMode('main');
+$('lb-all').onclick = () => setLabelMode('all');
+$('selftest').onclick = () => {
+  selfTest = !selfTest; revealed.clear();
+  $('selftest').setAttribute('aria-pressed', String(selfTest));
+  if (selfTest && labelMode === 'off') setLabelMode('main');
+  if (selected) select(selected); else labelsStale();
+};
+$('fold').onclick = () => { $('app').classList.toggle('folded'); };
+
+// ---------- side panel ----------
+function buildControls() {
+  const presets = $('presets'); presets.innerHTML = '';
+  for (const pr of PRESETS) {
+    const b = document.createElement('button'); b.className = 'chip'; b.textContent = pr.label;
+    b.onclick = () => {
+      for (const s of SYSTEMS) { const v = pr.set.all ? 1 : pr.set[s.key]; SYS[s.key].on = !!v; SYS[s.key].opacity = v || 1; }
+      isolated = null; refresh();
+    };
+    presets.append(b);
+  }
+  const seg = (el, items, get, set) => {
+    el.innerHTML = '';
+    for (const it of items) {
+      const b = document.createElement('button'); b.className = 'chip'; b.textContent = it; b.setAttribute('aria-pressed', String(get() === it));
+      b.onclick = () => { set(it); for (const c of el.children) c.setAttribute('aria-pressed', String(c.textContent === it)); };
+      el.append(b);
+    }
+  };
+  seg($('regions'), REGIONS, () => region, (v) => { region = v; isolated = null; refresh(); if (v !== 'All') { const l = parts.filter(isShown); if (l.length) focusOn(l); } else viewFrom(0, 1); });
+  seg($('sides'), ['Both', 'Left', 'Right'], () => side, (v) => { side = v; refresh(); });
+  const el = $('layers'); el.innerHTML = '';
+  for (const s of SYSTEMS) {
+    const st = SYS[s.key]; if (!st.count) continue;
+    const row = document.createElement('div'); row.className = 'layer'; row.dataset.k = s.key; row.style.setProperty('--sw', s.color);
+    row.innerHTML = `<button class="tog" aria-label="Show ${s.label}"><svg viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg></button><div class="nm"><span>${s.label}</span><span class="n">${st.count}</span></div><input type="range" min="0" max="100" aria-label="${s.label}: solid to clear">`;
+    row.querySelector('.tog').onclick = () => { st.on = !st.on; refresh(); };
+    row.querySelector('input').oninput = (e) => { st.opacity = Math.max(0.04, 1 - e.target.value / 100); if (!st.on) st.on = true; refresh(); };
+    el.append(row);
+  }
+  renderLayers();
+}
+function renderLayers() {
+  for (const row of $('layers').children) {
+    const st = SYS[row.dataset.k];
+    row.querySelector('.tog').setAttribute('aria-pressed', String(st.on));
+    row.querySelector('input').value = Math.round((1 - st.opacity) * 100);
+    row.classList.toggle('off', !st.on);
+  }
+}
+
+let listTimer = 0;
+$('q').addEventListener('input', () => { clearTimeout(listTimer); listTimer = setTimeout(renderList, 80); });
+function renderList() {
+  if ($('pane-parts').hidden) return;
+  const terms = $('q').value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const list = parts.filter((p) => terms.length ? terms.every((t) => p.name.toLowerCase().includes(t)) : isShown(p));
+  list.sort((a, b) => a.canon.localeCompare(b.canon) || a.name.localeCompare(b.name));
+  const cap = 300;
+  $('plist-note').textContent = (terms.length ? `${list.length} match${list.length === 1 ? '' : 'es'} in the whole body.` : `${list.length} parts showing now. Type to search all ${parts.length}.`) + (list.length > cap ? ` First ${cap} shown.` : '');
+  const el = $('plist'); el.innerHTML = '';
+  for (const p of list.slice(0, cap)) {
+    const b = document.createElement('button'); b.className = 'prow' + (selected === p ? ' sel' : '');
+    b.innerHTML = `<i class="dot" style="background:${SYS[p.sys].color}"></i><span class="nm"></span><span class="rg">${p.region}</span>`;
+    b.querySelector('.nm').textContent = p.name;
+    b.onclick = () => {
+      if (!isShown(p)) {
+        SYS[p.sys].on = true;
+        if (region !== 'All' && p.region !== region) { region = 'All'; for (const c of $('regions').children) c.setAttribute('aria-pressed', String(c.textContent === 'All')); }
+        if (isolated) isolated = null;
+        refresh();
+      }
+      select(p); focusOn([p]);
+    };
+    el.append(b);
+  }
+}
+for (const b of document.querySelectorAll('.tabs button')) {
+  b.onclick = () => {
+    for (const o of document.querySelectorAll('.tabs button')) { o.setAttribute('aria-selected', String(o === b)); $('pane-' + o.dataset.tab).hidden = o !== b; }
+    if (b.dataset.tab === 'parts') renderList();
+    if (b.dataset.tab === 'quiz') renderWeak();
+  };
+}
+
+// ---------- quiz ----------
+const STORE = 'oaa-quiz-v1';
+let stats = {};
+try { stats = JSON.parse(localStorage.getItem(STORE) || '{}') || {}; } catch { stats = {}; }
+const saveStats = () => { try { localStorage.setItem(STORE, JSON.stringify(stats)); } catch {} };
+let qmode = 'find';
+for (const b of $('qmodes').children) b.onclick = () => { qmode = b.dataset.mode; for (const o of $('qmodes').children) o.setAttribute('aria-pressed', String(o === b)); };
+const qlabel = (p) => quiz && quiz.ignoreSide ? p.canon : p.name;
+function poolNow(ignoreSide) {
+  // only parts that are actually visible on screen right now
+  const pool = parts.filter((p) => isShown(p) && effOpacity(p) >= 0.5);
+  if (!ignoreSide) return pool;
+  const seen = new Map();
+  for (const p of pool) if (!seen.has(p.canon)) seen.set(p.canon, p);
+  return [...seen.values()];
+}
+$('qstart').onclick = () => {
+  const ignoreSide = $('ignore-side').checked;
+  const pool = poolNow(ignoreSide);
+  if (pool.length < 4) { $('pool-note').textContent = 'Turn on more systems or pick a bigger region first. The quiz needs at least 4 parts showing.'; return; }
+  select(null);
+  quiz = { mode: qmode, ignoreSide, pool, score: 0, total: 0, streak: 0, current: null, answered: false, highlight: null, badFlash: null, last: [] };
+  $('quiz-setup').hidden = true; $('quiz-run').hidden = false; $('prompt').hidden = false;
+  nextQuestion();
+};
+function weightedPick(pool) {
+  const w = pool.map((p) => { const s = stats[qlabel(p)] || { c: 0, w: 0 }; return quiz.last.includes(p.id) ? 0.02 : Math.max(0.25, 1 + s.w * 2 - s.c * 0.6); });
+  let r = Math.random() * w.reduce((a, b) => a + b, 0);
+  for (let i = 0; i < pool.length; i++) { r -= w[i]; if (r <= 0) return pool[i]; }
+  return pool[pool.length - 1];
+}
+function nextQuestion() {
+  const q = quiz; q.answered = false; q.badFlash = null; q.highlight = null;
+  q.current = weightedPick(q.pool);
+  q.last = [q.current.id, ...q.last].slice(0, Math.min(8, Math.floor(q.pool.length / 2)));
+  $('prompt-fb').textContent = ''; $('prompt-fb').className = 'fb';
+  $('qnext').disabled = true; $('qreveal').disabled = false;
+  if (q.mode === 'find') {
+    $('prompt-k').textContent = 'Find and tap'; $('prompt-t').textContent = qlabel(q.current);
+    $('options').innerHTML = '<p class="note">Tap the part on the body. Turn and zoom as much as you like. Labels stay hidden until you answer.</p>';
+  } else {
+    $('prompt-k').textContent = 'What is the glowing part?'; $('prompt-t').textContent = '?';
+    q.highlight = q.current; focusOn([q.current]);
+    const same = (a) => qlabel(a) === qlabel(q.current);
+    let cand = q.pool.filter((p) => !same(p) && p.sys === q.current.sys && p.region === q.current.region);
+    if (cand.length < 3) cand = cand.concat(q.pool.filter((p) => !same(p) && p.sys === q.current.sys && !cand.includes(p)));
+    if (cand.length < 3) cand = cand.concat(q.pool.filter((p) => !same(p) && !cand.includes(p)));
+    const opts = [q.current];
+    while (opts.length < 4 && cand.length) { const p = cand.splice(Math.floor(Math.random() * cand.length), 1)[0]; if (!opts.some((o) => qlabel(o) === qlabel(p))) opts.push(p); }
+    opts.sort(() => Math.random() - 0.5);
+    $('options').innerHTML = '';
+    for (const o of opts) { const b = document.createElement('button'); b.textContent = qlabel(o); b.dataset.right = String(o === q.current); b.onclick = () => quizAnswer(o, b); $('options').append(b); }
+  }
+  refresh(); updateQuizStats();
+}
+function record(p, ok) { const k = qlabel(p); const s = stats[k] || (stats[k] = { c: 0, w: 0 }); ok ? s.c++ : s.w++; saveStats(); }
+function quizAnswer(p, btn) {
+  const q = quiz; if (!q || q.answered) return;
+  q.answered = true; q.total++;
+  const ok = q.ignoreSide ? p.canon === q.current.canon : p === q.current;
+  record(q.current, ok);
+  if (ok) { q.score++; q.streak++; } else q.streak = 0;
+  const fb = $('prompt-fb');
+  $('prompt-t').textContent = qlabel(q.current);
+  if (q.mode === 'find') {
+    if (ok) { fb.textContent = 'Correct!'; fb.className = 'fb good'; q.highlight = p; }
+    else { fb.textContent = `You tapped ${p.name}. The answer is glowing.`; fb.className = 'fb bad'; q.badFlash = p; q.highlight = q.current; focusOn([q.current]); }
+  } else {
+    fb.textContent = ok ? 'Correct!' : 'Not quite.'; fb.className = 'fb ' + (ok ? 'good' : 'bad');
+    for (const b of $('options').children) { b.disabled = true; if (b.dataset.right === 'true') b.classList.add('right'); }
+    if (!ok && btn) btn.classList.add('wrong');
+  }
+  $('qnext').disabled = false; $('qreveal').disabled = true;
+  refresh(); updateQuizStats(); renderWeak();
+  if (ok && q.mode === 'find') setTimeout(() => { if (quiz === q && q.answered) nextQuestion(); }, 1200);
+}
+$('qnext').onclick = () => quiz && nextQuestion();
+$('qreveal').onclick = () => {
+  const q = quiz; if (!q || q.answered) return;
+  q.answered = true; q.total++; q.streak = 0; record(q.current, false);
+  $('prompt-t').textContent = qlabel(q.current);
+  $('prompt-fb').textContent = 'Here it is.'; $('prompt-fb').className = 'fb';
+  q.highlight = q.current; focusOn([q.current]);
+  for (const b of $('options').children) if (b.tagName === 'BUTTON') { b.disabled = true; if (b.dataset.right === 'true') b.classList.add('right'); }
+  $('qnext').disabled = false; $('qreveal').disabled = true;
+  refresh(); updateQuizStats(); renderWeak();
+};
+$('qstop').onclick = () => {
+  const q = quiz; quiz = null;
+  $('quiz-setup').hidden = false; $('quiz-run').hidden = true; $('prompt').hidden = true;
+  if (q && q.total) $('pool-note').textContent = `Last round: ${q.score} of ${q.total} correct. The quiz asks about what you can see right now.`;
+  refresh();
+};
+function updateQuizStats() {
+  $('s-score').textContent = `${quiz.score}/${quiz.total}`;
+  $('s-streak').textContent = quiz.streak;
+  const learned = quiz.pool.filter((p) => { const s = stats[qlabel(p)]; return s && s.c >= 2 && s.c > s.w; }).length;
+  $('s-master').textContent = `${learned}/${quiz.pool.length}`;
+}
+function renderWeak() {
+  const rows = Object.entries(stats).filter(([, s]) => s.w > 0).sort((a, b) => (b[1].w - b[1].c) - (a[1].w - a[1].c)).slice(0, 8);
+  $('weak').innerHTML = rows.length ? '' : '<p class="note">Nothing yet. Parts you miss show up here, and the quiz asks about them more often.</p>';
+  for (const [k, s] of rows) { const d = document.createElement('div'); d.innerHTML = '<span></span><span></span>'; d.children[0].textContent = k; d.children[1].textContent = `${s.w} missed · ${s.c} right`; $('weak').append(d); }
+}
+$('qclear').onclick = () => { stats = {}; saveStats(); renderWeak(); };
+
+// theme changes recolour the selection glow
+const retint = () => { for (const p of parts) applyMaterial(p); dirty = true; labelsStale(); };
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', retint);
+new MutationObserver(retint).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
+load().catch((e) => { $('loader-t').textContent = 'The model did not load. Reload the page to try again.'; console.error(e); });
+</script>
+</body>
+</html>
